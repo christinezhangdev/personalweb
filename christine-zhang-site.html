@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Christine Zhang</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #2C5F5F;
+      --teal-dark: #1E4444;
+      --teal-light: #3A7A7A;
+      --ink: #1a1a1a;
+      --body: #3d3d3d;
+      --muted: #7a7a7a;
+      --faint: #b0b0b0;
+      --rule: #e0ddd8;
+      --warm-bg: #faf9f7;
+      --cream: #f5f3ef;
+      --serif: 'Newsreader', 'Georgia', serif;
+      --sans: 'DM Sans', -apple-system, sans-serif;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { font-size: 17px; scroll-behavior: smooth; -webkit-font-smoothing: antialiased; }
+    body { font-family: var(--sans); background: var(--warm-bg); color: var(--body); line-height: 1.7; overflow-x: hidden; }
+    ::selection { background: var(--teal); color: var(--warm-bg); }
+
+    #leaf-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      padding: 1.4rem 2.5rem;
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(250, 249, 247, 0.88);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s ease;
+    }
+    nav.scrolled { border-bottom-color: var(--rule); }
+    nav .name { font-family: var(--serif); font-size: 1rem; font-weight: 400; color: var(--ink); text-decoration: none; }
+    nav .links { display: flex; gap: 2rem; }
+    nav .links a { font-family: var(--sans); font-size: 0.7rem; font-weight: 400; color: var(--muted); text-decoration: none; text-transform: uppercase; letter-spacing: 0.12em; transition: color 0.2s; }
+    nav .links a:hover { color: var(--ink); }
+
+    .rect-hero { position: relative; z-index: 10; width: 100%; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 5rem 2rem 3rem; }
+    .rect-container { position: relative; width: min(920px, 92vw); height: min(460px, 52vw); }
+    .rect-track { position: absolute; inset: 0; border: 1.5px solid var(--rule); pointer-events: none; }
+    .rect-progress { position: absolute; inset: 0; pointer-events: none; }
+    .rect-progress svg { width: 100%; height: 100%; }
+    .progress-path { fill: none; stroke: var(--teal); stroke-width: 1; stroke-linecap: round; }
+    .drag-dot { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--teal); cursor: grab; z-index: 50; transform: translate(-50%, -50%); transition: box-shadow 0.15s ease; box-shadow: 0 0 0 5px rgba(44,95,95,0.15); }
+    .drag-dot:hover { box-shadow: 0 0 0 10px rgba(44,95,95,0.1); }
+    .drag-dot.dragging { cursor: grabbing; box-shadow: 0 0 0 12px rgba(44,95,95,0.08); }
+    .drag-hint { position: absolute; bottom: -36px; left: 50%; transform: translateX(-50%); font-family: var(--sans); font-size: 0.6rem; color: var(--faint); text-transform: uppercase; letter-spacing: 0.14em; white-space: nowrap; transition: opacity 0.6s ease; }
+
+    .sq-panel { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 3rem 5rem; opacity: 0; transform: translateY(6px); transition: opacity 0.35s ease, transform 0.35s ease; pointer-events: none; }
+    .sq-panel.active { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .sq-panel-inner { max-width: 560px; }
+    .sq-epigraph { font-family: var(--serif); font-size: 1rem; font-weight: 300; font-style: italic; color: var(--muted); line-height: 1.75; }
+    .sq-heading { font-family: var(--serif); font-size: 2.2rem; font-weight: 300; color: var(--ink); line-height: 1.3; letter-spacing: -0.01em; }
+    .sq-heading strong { font-weight: 500; }
+    .sq-heading a { color: inherit; text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; }
+    .sq-body { font-family: var(--sans); font-size: 0.92rem; color: var(--body); line-height: 1.85; }
+    .sq-cta { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--sans); font-size: 0.72rem; color: var(--muted); text-decoration: none; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 1.5rem; transition: color 0.2s; }
+    .sq-cta:hover { color: var(--ink); }
+    .sq-cta svg { width: 13px; height: 13px; transition: transform 0.2s; }
+    .sq-cta:hover svg { transform: translateY(2px); }
+
+    .corner-label { position: absolute; font-family: var(--sans); font-size: 0.56rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--faint); transition: color 0.3s ease; }
+    .corner-label.active { color: var(--teal); }
+    .corner-label.tl { top: -22px; left: 0; }
+    .corner-label.tr { top: -22px; right: 0; }
+    .corner-label.br { bottom: -22px; right: 0; }
+    .corner-label.bl { bottom: -22px; left: 0; }
+
+    .scroll-content { position: relative; z-index: 10; }
+    section { max-width: 720px; margin: 0 auto; padding: 5rem 2.5rem; }
+    .section-rule { width: 100%; height: 1px; background: var(--rule); max-width: 720px; margin: 0 auto; }
+    .section-label { font-family: var(--sans); font-size: 0.68rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.15em; color: var(--faint); margin-bottom: 2.5rem; }
+    .section-heading { font-family: var(--serif); font-size: 1.6rem; font-weight: 400; color: var(--ink); line-height: 1.4; margin-bottom: 1.5rem; }
+    .section-text { font-family: var(--sans); font-size: 0.92rem; color: var(--body); line-height: 1.85; margin-bottom: 1.2rem; }
+    .section-text a { color: var(--teal-light); text-decoration: underline; text-decoration-color: var(--rule); text-underline-offset: 3px; transition: text-decoration-color 0.2s; }
+    .section-text a:hover { text-decoration-color: var(--teal-light); }
+    .now-card { background: var(--cream); border-radius: 2px; padding: 2rem 2.2rem; margin: 2rem 0; border-left: 2px solid var(--teal); }
+    .now-card p { font-family: var(--sans); font-size: 0.9rem; color: var(--body); line-height: 1.8; margin-bottom: 0.8rem; }
+    .now-card p:last-child { margin-bottom: 0; }
+    .now-card strong { color: var(--ink); font-weight: 500; }
+    .timeline { margin: 2rem 0; }
+    .timeline-item { display: grid; grid-template-columns: 100px 1fr; gap: 1.5rem; padding: 1.2rem 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-year { font-family: var(--serif); font-size: 0.85rem; font-weight: 300; color: var(--faint); font-style: italic; }
+    .timeline-content { font-family: var(--sans); font-size: 0.88rem; color: var(--body); line-height: 1.7; }
+    .timeline-content .title { color: var(--ink); font-weight: 500; }
+    .contact-section { padding-bottom: 8rem; }
+    .contact-links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 2rem; }
+    .contact-links a { font-family: var(--sans); font-size: 0.82rem; color: var(--muted); text-decoration: none; padding-bottom: 2px; border-bottom: 1px solid var(--rule); transition: color 0.2s, border-color 0.2s; }
+    .contact-links a:hover { color: var(--ink); border-color: var(--ink); }
+    footer { max-width: 720px; margin: 0 auto; padding: 2rem 2.5rem 3rem; border-top: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; }
+    footer span { font-family: var(--sans); font-size: 0.7rem; color: var(--faint); letter-spacing: 0.05em; }
+
+    @media (max-width: 640px) {
+      nav { padding: 1.2rem 1.5rem; }
+      nav .links { gap: 1.2rem; }
+      nav .links a { font-size: 0.62rem; }
+      .rect-hero { padding: 5rem 0.5rem 2.5rem; }
+      .rect-container { width: 95vw; height: 55vw; }
+      .sq-panel { padding: 1.8rem 2rem; }
+      .sq-heading { font-size: 1.4rem; }
+      .sq-body { font-size: 0.82rem; }
+      .sq-epigraph { font-size: 0.82rem; }
+      section { padding: 3.5rem 1.5rem; }
+      .timeline-item { grid-template-columns: 1fr; gap: 0.3rem; }
+      footer { padding: 2rem 1.5rem; }
+      .corner-label { font-size: 0.48rem; }
+      .corner-label.tl, .corner-label.tr { top: -16px; }
+      .corner-label.bl, .corner-label.br { bottom: -16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="leaf-canvas"></canvas>
+
+  <nav id="nav">
+    <a href="#" class="name">Christine Zhang</a>
+    <div class="links">
+      <a href="#now">Now</a>
+      <a href="#before">Before</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </nav>
+
+  <div class="rect-hero">
+    <div class="rect-container" id="rectContainer">
+      <div class="rect-track"></div>
+      <div class="rect-progress">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path class="progress-path" id="progressPath" d="" />
+        </svg>
+      </div>
+      <span class="corner-label tl active" id="labelTL">01</span>
+      <span class="corner-label tr" id="labelTR">02</span>
+      <span class="corner-label br" id="labelBR">03</span>
+      <span class="corner-label bl" id="labelBL">04</span>
+
+      <div class="sq-panel active" id="panel0">
+        <div class="sq-panel-inner">
+          <h1 class="sq-heading">I&rsquo;m <strong>Christine Zhang</strong>. I&rsquo;m on leave from <a href="https://www.harvard.edu">Harvard</a> building <a href="#">Intera</a>&mdash;a behavioral forecasting layer for clinical trials.</h1>
+        </div>
+      </div>
+      <div class="sq-panel" id="panel1">
+        <div class="sq-panel-inner">
+          <p class="sq-epigraph">I was trained in politics before I ever built products. I learned how decisions get made, who holds leverage, and how narratives move people. Now I build systems instead of speeches.</p>
+        </div>
+      </div>
+      <div class="sq-panel" id="panel2">
+        <div class="sq-panel-inner">
+          <p class="sq-body">When I was sixteen, I was the youngest person in a room full of grown adults fighting over policy I&rsquo;d written. FOX News was there almost every meeting. The controversy was real&mdash;not performative, not symbolic. It was about resource allocation, equity frameworks, and who gets to decide how a district serves its students. That experience taught me more about how institutions actually operate than anything else in my life.</p>
+        </div>
+      </div>
+      <div class="sq-panel" id="panel3">
+        <div class="sq-panel-inner">
+          <p class="sq-body">I spent a lot of time after that figuring out what I wanted. I followed my intuition, my passion, and my goals&mdash;from the state capitol to Harvard to San Francisco. Now I&rsquo;m building Intera.</p>
+          <a href="#now" class="sq-cta">Keep reading <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg></a>
+        </div>
+      </div>
+
+      <div class="drag-dot" id="dragDot"></div>
+      <div class="drag-hint" id="dragHint">Drag to explore</div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <div class="section-rule"></div>
+    <section id="now">
+      <div class="section-label">Now</div>
+      <h2 class="section-heading">Intera</h2>
+      <p class="section-text">Clinical trials lose roughly 30% of their participants before the study is over. Not because patients don&rsquo;t care&mdash;because the experience breaks down in ways that are predictable but unmeasured. Burden spikes. Expectation mismatches. Trust erosion. Life getting in the way.</p>
+      <p class="section-text">The industry has strong tools for finding patients and getting them enrolled. But there&rsquo;s still no standard way to forecast whether the people who sign up will actually stay. That&rsquo;s a behavioral science problem. It requires different data, different models, and a fundamentally different approach than what exists today.</p>
+      <div class="now-card">
+        <p><strong>Intera</strong> takes trial protocols&mdash;schedules of assessments, consent language, site constraints, patient communications&mdash;and produces a retention risk forecast: where drop-off is likely to happen, which patient segments are most at risk, and why.</p>
+        <p>Then we run counterfactuals. Change the visit schedule, adjust the onboarding, shift how reimbursement is communicated&mdash;and see how predicted retention moves. The goal is to make drop-off something you can manage before it happens, not something you react to after it&rsquo;s too late.</p>
+        <p>The model gets better over time because we embed real patient interviews into live trials. That data&mdash;why patients enrolled, what&rsquo;s hard, what would make them stay, matched to actual outcomes&mdash;doesn&rsquo;t exist anywhere else. Every engagement makes the forecast smarter. Competitors can&rsquo;t replicate it because they&rsquo;re not collecting it.</p>
+      </div>
+      <p class="section-text">We&rsquo;re not trying to replace clinical research teams or claim we&rsquo;ve solved retention. We&rsquo;re giving them a forecast they&rsquo;ve never had&mdash;directional, grounded in real behavioral data, and useful early enough to actually change outcomes. The work is hard and the problem is genuinely complex. That&rsquo;s why it&rsquo;s worth doing.</p>
+    </section>
+    <div class="section-rule"></div>
+    <section id="before">
+      <div class="section-label">Before</div>
+      <h2 class="section-heading">I learned how things operate by being the person in the room that nobody expected to be there.</h2>
+      <p class="section-text">At sixteen I was writing policy for my school district&mdash;resource allocation, equity frameworks, student wellness infrastructure. The policy was controversial. FOX News showed up almost every board meeting. Grown adults&mdash;parents, administrators, local politicians&mdash;pushed back hard. I read every angry email. Then I sat down with the people who disagreed most and found common ground I didn&rsquo;t expect.</p>
+      <p class="section-text">That experience didn&rsquo;t make me cynical. It made me pay attention. I learned how power operates in a room, how people make decisions when they&rsquo;re afraid, what it actually takes to move policy through a system that doesn&rsquo;t want to move.</p>
+      <p class="section-text">I spent a lot of time after that figuring out what I wanted. I taught myself to code at the public library, went to the state capitol, went to Harvard, followed my intuition into rooms I didn&rsquo;t belong in until I did. The through-line has always been the same question: how do you understand human behavior well enough to make better decisions before the damage is done?</p>
+      <div class="timeline">
+        <div class="timeline-item"><span class="timeline-year">2025&ndash;</span><div class="timeline-content"><span class="title">Intera</span> &mdash; On leave from Harvard. Previously built Veil (synthetic focus groups for healthcare messaging), raised over $1M, grew the team to six. Now building the behavioral forecasting layer for clinical trial retention.</div></div>
+        <div class="timeline-item"><span class="timeline-year">2024</span><div class="timeline-content"><span class="title">AI Governance</span> &mdash; Built an evaluation platform for public-sector AI systems, mapping automated government tools against the EU AI Act and U.S. Executive Order on AI. Harvard&rsquo;s Tech Science for Public Good program.</div></div>
+        <div class="timeline-item"><span class="timeline-year">2023</span><div class="timeline-content"><span class="title">Harvard</span> &mdash; CS and Statistics. Spent a lot of time figuring out what I wanted. Followed my intuition, my passion, and my goals. Unusual Ventures Fellow. Genesis Fund&mdash;youngest founders in cohort, only startup selected from Harvard. Now I&rsquo;m building Intera.</div></div>
+        <div class="timeline-item"><span class="timeline-year">2021&ndash;23</span><div class="timeline-content"><span class="title">Healthcare &amp; Education Policy</span> &mdash; Spent three months of my junior year at the Washington State Capitol lobbying for healthcare access and CS education. Co-founded the Olympia Youth Council. Wrote a bill, spent 113 days lobbying it through the legislature.</div></div>
+        <div class="timeline-item"><span class="timeline-year">2020&ndash;22</span><div class="timeline-content"><span class="title">BYHER4HER</span> &mdash; Built and taught CS curriculum in underserved areas. Started locally, expanded to Peru and Taiwan.</div></div>
+        <div class="timeline-item"><span class="timeline-year">2020</span><div class="timeline-content"><span class="title">Olympia School Board</span> &mdash; First student representative to lead policy creation in the district. Wrote a student wellness framework that became the most controversial item on the board&rsquo;s agenda. FOX News. Packed rooms. Heated testimony. The youngest person at the table by twenty years. The policy passed.</div></div>
+      </div>
+    </section>
+    <div class="section-rule"></div>
+    <section id="contact" class="contact-section">
+      <div class="section-label">Contact</div>
+      <h2 class="section-heading">Get me to a no as fast as possible.</h2>
+      <p class="section-text">I believe the right way to build a company is being people-first. If there&rsquo;s a reason we shouldn&rsquo;t be talking, I&rsquo;d rather find out in five minutes so we can both spend our time on something better. And if there is a reason to talk&mdash;I want to hear what you&rsquo;re working on.</p>
+      <p class="section-text">I&rsquo;m especially interested in conversations with people in clinical operations, patient engagement, site networks, behavioral science, or anyone who&rsquo;s thought about why systems built for humans so rarely ask humans what they think.</p>
+      <div class="contact-links">
+        <a href="mailto:christine_zhang@college.harvard.edu">christine_zhang@college.harvard.edu</a>
+        <a href="https://www.linkedin.com/in/christine-zhang/" target="_blank">LinkedIn</a>
+        <a href="https://calendly.com/christine_zhang-college/christine-zhang-s-calendly" target="_blank">Book a meeting</a>
+      </div>
+    </section>
+    <footer><span>&copy; 2026 Christine Zhang</span><span>San Francisco</span></footer>
+  </div>
+
+  <script>
+    // =============================================
+    // GINKGO BILOBA — CANVAS FALLING LEAVES
+    // Matching reference: wide fan, dense parallel
+    // veins, wavy scalloped edge, long curved stem
+    // Interactive: mouse repels, drag throws them
+    // =============================================
+    const cv = document.getElementById('leaf-canvas');
+    const cx = cv.getContext('2d');
+    let W, H;
+    let mx = -999, my = -999;
+
+    function resize() {
+      W = cv.width = window.innerWidth;
+      H = cv.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    document.addEventListener('mouseleave', () => { mx = -999; my = -999; });
+    document.addEventListener('touchmove', e => { mx = e.touches[0].clientX; my = e.touches[0].clientY; }, { passive: true });
+
+    function drawGinkgo(ctx, x, y, scale, rot, alpha) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.globalAlpha = alpha;
+
+      const s = scale;
+      const col = '#2C5F5F';
+
+      // ---- LONG CURVED STEM ----
+      ctx.beginPath();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.4 * s;
+      ctx.lineCap = 'round';
+      ctx.moveTo(0, 38 * s);
+      ctx.bezierCurveTo(-3 * s, 28 * s, 2 * s, 18 * s, 0, 6 * s);
+      ctx.stroke();
+
+      // ---- LEFT LOBE OUTLINE — wide fan ----
+      ctx.beginPath();
+      ctx.lineWidth = 1.1 * s;
+      ctx.moveTo(0, 6 * s);
+      ctx.bezierCurveTo(-4 * s, 0, -12 * s, -10 * s, -20 * s, -18 * s);
+      ctx.bezierCurveTo(-24 * s, -22 * s, -26 * s, -28 * s, -23 * s, -32 * s);
+      // Scalloped edge - left side
+      ctx.bezierCurveTo(-21 * s, -34 * s, -18 * s, -33 * s, -16 * s, -34.5 * s);
+      ctx.bezierCurveTo(-14 * s, -33 * s, -11 * s, -34 * s, -9 * s, -35 * s);
+      ctx.bezierCurveTo(-7 * s, -33.5 * s, -5 * s, -34 * s, -3 * s, -34.5 * s);
+      ctx.bezierCurveTo(-1.5 * s, -33 * s, -0.5 * s, -30 * s, 0, -27 * s);
+      ctx.stroke();
+
+      // ---- RIGHT LOBE OUTLINE — wide fan ----
+      ctx.beginPath();
+      ctx.moveTo(0, 6 * s);
+      ctx.bezierCurveTo(4 * s, 0, 12 * s, -10 * s, 20 * s, -18 * s);
+      ctx.bezierCurveTo(24 * s, -22 * s, 26 * s, -28 * s, 23 * s, -32 * s);
+      // Scalloped edge - right side
+      ctx.bezierCurveTo(21 * s, -34 * s, 18 * s, -33 * s, 16 * s, -34.5 * s);
+      ctx.bezierCurveTo(14 * s, -33 * s, 11 * s, -34 * s, 9 * s, -35 * s);
+      ctx.bezierCurveTo(7 * s, -33.5 * s, 5 * s, -34 * s, 3 * s, -34.5 * s);
+      ctx.bezierCurveTo(1.5 * s, -33 * s, 0.5 * s, -30 * s, 0, -27 * s);
+      ctx.stroke();
+
+      // ---- DENSE PARALLEL VEINS radiating from stem ----
+      // These fan out from the stem base to the scalloped edge
+      // like in the reference image — many parallel lines
+      ctx.lineWidth = 0.45 * s;
+      ctx.globalAlpha = alpha * 0.5;
+
+      const veinCount = 18;
+      for (let i = 0; i < veinCount; i++) {
+        const t = i / (veinCount - 1); // 0 to 1
+        // Fan angle from -80deg to -10deg (left side)
+        const angL = -Math.PI * (0.22 + t * 0.34);
+        const lenL = (18 + t * 14) * s;
+        ctx.beginPath();
+        ctx.moveTo(0, (5 - t * 2) * s);
+        // Slight curve outward
+        const cpxL = Math.cos(angL) * lenL * 0.5 - (1 - t) * 2 * s;
+        const cpyL = (5 - t * 2) * s + Math.sin(angL) * lenL * 0.5;
+        ctx.quadraticCurveTo(cpxL, cpyL, Math.cos(angL) * lenL, (5 - t * 2) * s + Math.sin(angL) * lenL);
+        ctx.stroke();
+
+        // Mirror for right side
+        ctx.beginPath();
+        ctx.moveTo(0, (5 - t * 2) * s);
+        ctx.quadraticCurveTo(-cpxL, cpyL, -Math.cos(angL) * lenL, (5 - t * 2) * s + Math.sin(angL) * lenL);
+        ctx.stroke();
+      }
+
+      // ---- FINER SECONDARY VEINS ----
+      ctx.lineWidth = 0.25 * s;
+      ctx.globalAlpha = alpha * 0.25;
+
+      for (let i = 0; i < 12; i++) {
+        const t = (i + 0.5) / 12;
+        const ang = -Math.PI * (0.22 + t * 0.34);
+        const len = (15 + t * 12) * s;
+
+        ctx.beginPath();
+        ctx.moveTo(0, (4.5 - t * 1.5) * s);
+        ctx.lineTo(Math.cos(ang) * len, (4.5 - t * 1.5) * s + Math.sin(ang) * len);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, (4.5 - t * 1.5) * s);
+        ctx.lineTo(-Math.cos(ang) * len, (4.5 - t * 1.5) * s + Math.sin(ang) * len);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    // ---- LEAF PARTICLES ----
+    const leaves = [];
+    const COUNT = 14;
+
+    function makeLeaf(startOnScreen) {
+      return {
+        x: Math.random() * W,
+        y: startOnScreen ? Math.random() * H : -60 - Math.random() * 300,
+        scale: 0.45 + Math.random() * 0.55,
+        rot: Math.random() * Math.PI * 2,
+        rotV: (Math.random() - 0.5) * 0.005,
+        vx: (Math.random() - 0.5) * 0.2,
+        vy: 0.25 + Math.random() * 0.4,
+        swayPhase: Math.random() * Math.PI * 2,
+        swaySpeed: 0.004 + Math.random() * 0.008,
+        swayAmp: 0.2 + Math.random() * 0.4,
+        alpha: 0.12 + Math.random() * 0.16,
+        grabbed: false,
+      };
+    }
+
+    for (let i = 0; i < COUNT; i++) leaves.push(makeLeaf(true));
+
+    function animate() {
+      cx.clearRect(0, 0, W, H);
+
+      const scrollY = window.scrollY;
+
+      for (const l of leaves) {
+        // Sway
+        l.swayPhase += l.swaySpeed;
+        const sway = Math.sin(l.swayPhase) * l.swayAmp;
+        l.vx += sway * 0.008;
+
+        // Mouse interaction — repel
+        const dx = l.x - mx;
+        const dy = l.y - (my + scrollY);  // account for scroll in fixed canvas
+        // Actually canvas is fixed so just use my
+        const dx2 = l.x - mx;
+        const dy2 = l.y - my;
+        const dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+
+        if (dist < 120) {
+          const force = (120 - dist) / 120;
+          l.vx += (dx2 / dist) * force * 0.8;
+          l.vy += (dy2 / dist) * force * 0.4;
+          l.rotV += force * 0.015 * (Math.random() > 0.5 ? 1 : -1);
+        }
+
+        // Physics
+        l.vy += 0.003; // gravity
+        l.vx *= 0.995;
+        l.vy *= 0.998;
+        l.x += l.vx;
+        l.y += l.vy;
+        l.rot += l.rotV;
+        l.rotV *= 0.998;
+
+        // Reset if off screen
+        if (l.y > H + 80 || l.x < -100 || l.x > W + 100) {
+          Object.assign(l, makeLeaf(false));
+        }
+
+        drawGinkgo(cx, l.x, l.y, l.scale, l.rot, l.alpha);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // =============================================
+    // RECTANGLE DRAG
+    // =============================================
+    const container = document.getElementById('rectContainer');
+    const dot = document.getElementById('dragDot');
+    const hint = document.getElementById('dragHint');
+    const panels = [document.getElementById('panel0'),document.getElementById('panel1'),document.getElementById('panel2'),document.getElementById('panel3')];
+    const labelEls = [document.getElementById('labelTL'),document.getElementById('labelTR'),document.getElementById('labelBR'),document.getElementById('labelBL')];
+    const progressPath = document.getElementById('progressPath');
+    let progress = 0, isDragging = false, hintVisible = true;
+
+    function getR() { return container.getBoundingClientRect(); }
+    function pToPos(p) {
+      const r=getR(),w=r.width,h=r.height,pm=2*w+2*h;
+      p=((p%1)+1)%1; const d=p*pm;
+      if(d<=w) return {x:d,y:0};
+      if(d<=w+h) return {x:w,y:d-w};
+      if(d<=2*w+h) return {x:w-(d-w-h),y:h};
+      return {x:0,y:h-(d-2*w-h)};
+    }
+    function posToP(pmx,pmy) {
+      const r=getR(),x=pmx-r.left,y=pmy-r.top,w=r.width,h=r.height,pm=2*w+2*h;
+      const c=[
+        {d:Math.abs(y),p:Math.max(0,Math.min(w,x))/pm},
+        {d:Math.abs(x-w),p:(w+Math.max(0,Math.min(h,y)))/pm},
+        {d:Math.abs(y-h),p:(w+h+Math.max(0,Math.min(w,w-x)))/pm},
+        {d:Math.abs(x),p:(2*w+h+Math.max(0,Math.min(h,h-y)))/pm}
+      ];
+      c.sort((a,b)=>a.d-b.d); return c[0].p;
+    }
+
+    function update() {
+      const pos=pToPos(progress);
+      dot.style.left=pos.x+'px'; dot.style.top=pos.y+'px';
+      const p=((progress%1)+1)%1;
+      const active=p<0.25?0:p<0.5?1:p<0.75?2:3;
+      panels.forEach((el,i)=>el.classList.toggle('active',i===active));
+      labelEls.forEach((el,i)=>el.classList.toggle('active',i===active));
+      let d='M 0 0 ';
+      if(p<=0.25) d+=`L ${(p/0.25)*100} 0`;
+      else if(p<=0.5) d+=`L 100 0 L 100 ${((p-0.25)/0.25)*100}`;
+      else if(p<=0.75) d+=`L 100 0 L 100 100 L ${100-((p-0.5)/0.25)*100} 100`;
+      else d+=`L 100 0 L 100 100 L 0 100 L 0 ${100-((p-0.75)/0.25)*100}`;
+      progressPath.setAttribute('d',d);
+    }
+    update();
+
+    const SENS=2.0;
+    dot.addEventListener('mousedown',e=>{e.preventDefault();isDragging=true;dot.classList.add('dragging');if(hintVisible){hint.style.opacity='0';hintVisible=false;}});
+    document.addEventListener('mousemove',e=>{if(!isDragging)return;let diff=posToP(e.clientX,e.clientY)-progress;if(diff>0.5)diff-=1;if(diff<-0.5)diff+=1;progress+=diff*SENS;progress=((progress%1)+1)%1;update();});
+    document.addEventListener('mouseup',()=>{isDragging=false;dot.classList.remove('dragging');});
+    dot.addEventListener('touchstart',e=>{e.preventDefault();isDragging=true;dot.classList.add('dragging');if(hintVisible){hint.style.opacity='0';hintVisible=false;}},{passive:false});
+    document.addEventListener('touchmove',e=>{if(!isDragging)return;const t=e.touches[0];let diff=posToP(t.clientX,t.clientY)-progress;if(diff>0.5)diff-=1;if(diff<-0.5)diff+=1;progress+=diff*SENS;progress=((progress%1)+1)%1;update();},{passive:true});
+    document.addEventListener('touchend',()=>{isDragging=false;dot.classList.remove('dragging');});
+
+    const nav=document.getElementById('nav');
+    window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>40);});
+    document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener('click',function(e){const h=this.getAttribute('href');if(h==='#')return;const t=document.querySelector(h);if(t){e.preventDefault();t.scrollIntoView({behavior:'smooth',block:'start'});}});});
+  </script>
+</body>
+</html>
